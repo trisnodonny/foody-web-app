@@ -81,8 +81,7 @@ class ControllerRecipes {
   static async renderRecipesQrCode(req, res, next) {
     try {
       const { qr_code_text } = req.body;
-      const acccessToken =
-        "XEA8izhxyDc4XRuqCN3DldqMSVwDau-HJN40N1s_zfrJvzvBLkmQU1mg9OxKfZjh";
+      const acccessToken = process.env.QRCODE_API_KEY;
       const response = await axios.post(
         `https://api.qr-code-generator.com/v1/create?access-token=${acccessToken}`,
         {
