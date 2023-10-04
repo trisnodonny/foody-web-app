@@ -1,36 +1,37 @@
-const { User } = require('../models')
-const { comparePassword } = require('../helpers/bcrypt')
-const { signToken } = require('../helpers/jwt')
-const { OAuth2Client } = require('google-auth-library');
+const { User } = require("../models");
+const { comparePassword } = require("../helpers/bcrypt");
+const { signToken } = require("../helpers/jwt");
+const { OAuth2Client } = require("google-auth-library");
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-const nodemailer = require('nodemailer')
-const sendgrigTransport = require('nodemailer-sendgrid-transport')
+const nodemailer = require("nodemailer");
+const sendgrigTransport = require("nodemailer-sendgrid-transport");
 
-const transporter = nodemailer.createTransport(sendgrigTransport({
-  host: "smtp.forwardemail.net",
-  port: 465,
-  secure: true,
-  auth: {
-    api_key: "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"
-  }
-}))
+const transporter = nodemailer.createTransport(
+  sendgrigTransport({
+    host: "smtp.forwardemail.net",
+    port: 465,
+    secure: true,
+    auth: {
+      api_key: process.env.NODEMAILER_API_KEY || "",
+    },
+  })
+);
 
 class ControllerUser {
   static async register(req, res, next) {
     try {
-      const { username, email, password, phoneNumber } = req.body
+      const { username, email, password, phoneNumber } = req.body;
       const newUser = await User.create({
         username,
         email,
         password,
-        phoneNumber
-      })
+        phoneNumber,
+      });
       transporter.sendMail({
         from: "trisnodonny@gmail.com",
         to: email,
         subject: `Welcome! Your Registration Was Successful 🚀`,
-        html:
-        `
+        html: `
         <h3>
           Dear ${username},
 
@@ -43,21 +44,21 @@ class ControllerUser {
           Best regards,
           The Foody Team
         </h3>
-        `
-      })
+        `,
+      });
       res.status(201).json({
         id: newUser.id,
-        email: newUser.email
-      })
+        email: newUser.email,
+      });
     } catch (err) {
       console.log(err);
-      next(err)
+      next(err);
     }
   }
 
   static async login(req, res, next) {
     try {
-      const { email, password } = req.body
+      const { email, password } = req.body;
 
       if (!email) throw { name: `EmailRequired` };
       if (!password) throw { name: `PasswordRequired` };
@@ -65,27 +66,26 @@ class ControllerUser {
       const user = await User.findOne({
         where: {
           email,
-        }
+        },
       });
 
       console.log(user);
 
       if (!user) throw { name: "InvalidLogin" };
 
-      const isValidPassword = comparePassword(password, user.password)
+      const isValidPassword = comparePassword(password, user.password);
 
       if (!isValidPassword) throw { name: "InvalidLogin" };
 
       const accessToken = signToken({
         id: user.id,
         email: user.email,
-      })
+      });
 
       res.status(200).json({
         access_token: accessToken,
-        username: user.username
-      })
-
+        username: user.username,
+      });
     } catch (err) {
       next(err);
     }
@@ -96,13 +96,13 @@ class ControllerUser {
       const { google_token } = req.headers;
       const ticket = await client.verifyIdToken({
         idToken: google_token,
-        audience: process.env.GOOGLE_CLIENT_ID
-      })
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
 
       const payload = ticket.getPayload();
 
       const [user, created] = await User.findOrCreate({
-        where: {email: payload.email},
+        where: { email: payload.email },
         defaults: {
           username: payload.name,
           password: "google-sign-in",
@@ -113,18 +113,17 @@ class ControllerUser {
       const accessToken = signToken({
         id: user.id,
         email: user.email,
-        username: user.username
+        username: user.username,
       });
 
       res.status(200).json({
         access_token: accessToken,
-        username: user.username
-      })
-      
+        username: user.username,
+      });
     } catch (err) {
       next(err);
     }
   }
 }
 
-module.exports = ControllerUser
+module.exports = ControllerUser;
